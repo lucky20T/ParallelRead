@@ -1,9 +1,10 @@
+require('dotenv').config();
 const crypto = require('crypto');
 const WebSocket = require('ws');
 
-const APPID = 'ga95ecf7';
-const APISecret = 'afaf43a40cbb30f1dd2993ca59d8e8dc';
-const APIKey = '2c273ae570e827dfb53bc37af6544478';
+const APPID = process.env.SPARK_APP_ID;
+const APISecret = process.env.SPARK_API_SECRET;
+const APIKey = process.env.SPARK_API_KEY;
 
 function getAuthUrl(hostUrl, apiKey, apiSecret) {
     const url = new URL(hostUrl);

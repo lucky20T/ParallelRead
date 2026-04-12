@@ -2,7 +2,8 @@ const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 const crypto = require('crypto');
 const Translation = require('../models/Translation');
 
-const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyDRbHQbxwp6MhZk-JTijv1r00wlpMadTwA';
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is not set");
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const hashText = (text, targetLang) => {
