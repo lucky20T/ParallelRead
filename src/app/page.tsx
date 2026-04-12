@@ -165,6 +165,7 @@ export default function Home() {
             originalSentences={sentences} 
             targetLang={targetLang} 
             onBack={handleBack} 
+            onChangeLanguage={setTargetLang}
           />
         )}
       </div>
