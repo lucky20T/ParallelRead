@@ -1,10 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
+require('dotenv').config();
 const readRoutes = require('./routes/readRoutes');
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,7 +15,11 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/api', readRoutes);
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/parallelread';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('FATAL ERROR: MONGODB_URI environment variable is not set.');
+  process.exit(1);
+}
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
