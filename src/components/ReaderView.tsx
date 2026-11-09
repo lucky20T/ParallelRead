@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { translateBatch } from '@/lib/api';
-import { Loader2, BookMarked, BookOpen, Quote, Glasses, Lightbulb } from 'lucide-react';
+import { translateBatch, getStoredApiKey } from '@/lib/api';
+import ApiKeyModal from '@/components/ApiKeyModal';
+import { Loader2, BookMarked, BookOpen, Quote, Glasses, Lightbulb, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReaderViewProps {
@@ -17,6 +18,8 @@ const BATCH_SIZE = 20;
 export default function ReaderView({ originalSentences, targetLang, onBack, onChangeLanguage }: ReaderViewProps) {
   const [translations, setTranslations] = useState<string[]>(new Array(originalSentences.length).fill(''));
   const [isTranslating, setIsTranslating] = useState<boolean[]>(new Array(originalSentences.length).fill(false));
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [apiKeyVersion, setApiKeyVersion] = useState(0);
   
   // Usable feature states
   const [zoom, setZoom] = useState(100);
@@ -58,12 +61,13 @@ export default function ReaderView({ originalSentences, targetLang, onBack, onCh
             });
             return next;
           });
-        } catch (err) {
+        } catch (err: any) {
           console.error("Batch translation failed:", err);
+          const errMsg = err?.response?.data?.error || "Translation Failed";
           setTranslations(prev => {
             const next = [...prev];
             batch.indices.forEach((idx) => {
-              if (!next[idx]) next[idx] = "[Translation Failed]";
+              if (!next[idx]) next[idx] = `[${errMsg}]`;
             });
             return next;
           });
@@ -79,7 +83,7 @@ export default function ReaderView({ originalSentences, targetLang, onBack, onCh
 
     translateAll();
     return () => { active = false; };
-  }, [originalSentences, targetLang]);
+  }, [originalSentences, targetLang, apiKeyVersion]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#F8F9FA] text-black font-sans">
@@ -93,11 +97,23 @@ export default function ReaderView({ originalSentences, targetLang, onBack, onCh
           <button onClick={onBack} className="hover:text-[#111827] transition-colors">Library</button>
           <button className="hover:text-[#111827] transition-colors">Sync Settings</button>
         </div>
-        {/* Removed User profile login entirely */}
-        <div className="flex items-center gap-6 text-[#9CA3AF] w-[22px]">
-          {/* Placeholder for alignment */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsKeyModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#6366F1]/10 text-[#4F46E5] hover:bg-[#6366F1]/20 transition-all border border-[#6366F1]/20"
+            title="Configure Gemini API Key"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">API Key</span>
+          </button>
         </div>
       </div>
+
+      <ApiKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        onSaved={() => setApiKeyVersion(v => v + 1)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         

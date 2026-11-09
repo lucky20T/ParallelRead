@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileUpload from '@/components/FileUpload';
 import ReaderView from '@/components/ReaderView';
-import { uploadFile } from '@/lib/api';
-import { Loader2, Settings, Upload, Globe2, BookOpen, ChevronRight, CheckCircle2 } from 'lucide-react';
+import ApiKeyModal from '@/components/ApiKeyModal';
+import { uploadFile, uploadText, getStoredApiKey } from '@/lib/api';
+import { Loader2, Settings, Key, Upload, Globe2, BookOpen, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Home() {
@@ -13,6 +14,12 @@ export default function Home() {
   const [error, setError] = useState('');
   const [inputMode, setInputMode] = useState<'file' | 'text'>('file');
   const [rawText, setRawText] = useState('');
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    setHasApiKey(Boolean(getStoredApiKey()));
+  }, []);
 
   const handleProcess = async (dataFn: () => Promise<any>) => {
     setIsUploading(true);
@@ -39,7 +46,7 @@ export default function Home() {
 
   const submitText = () => {
     if (!rawText.trim()) return setError('Please enter some text.');
-    handleProcess(() => require('@/lib/api').uploadText(rawText, targetLang));
+    handleProcess(() => uploadText(rawText, targetLang));
   };
 
   const handleBack = () => {
@@ -62,10 +69,31 @@ export default function Home() {
               <button className="hover:text-white transition-colors">Current Read</button>
               <button className="hover:text-white transition-colors">Discover</button>
             </div>
-            <div className="flex items-center gap-6 text-[#9CA3AF]">
-              <Settings className="w-5 h-5 cursor-pointer hover:text-white transition-colors" />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsKeyModalOpen(true)}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                  hasApiKey 
+                    ? 'bg-[#6366F1]/10 border-[#6366F1]/40 text-[#a5abe0] hover:bg-[#6366F1]/20' 
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                }`}
+                title="Configure Gemini API Key"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>{hasApiKey ? 'API Key Set' : 'Set Gemini Key'}</span>
+              </button>
+              <Settings 
+                onClick={() => setIsKeyModalOpen(true)}
+                className="w-5 h-5 cursor-pointer text-[#9CA3AF] hover:text-white transition-colors ml-2" 
+              />
             </div>
           </header>
+
+          <ApiKeyModal
+            isOpen={isKeyModalOpen}
+            onClose={() => setIsKeyModalOpen(false)}
+            onSaved={(key) => setHasApiKey(Boolean(key))}
+          />
 
           <AnimatePresence mode="wait">
             {isUploading ? (

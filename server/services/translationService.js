@@ -2,15 +2,11 @@ const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 const crypto = require('crypto');
 const Translation = require('../models/Translation');
 
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is not set");
-const genAI = new GoogleGenerativeAI(apiKey);
-
 const hashText = (text, targetLang) => {
   return crypto.createHash('sha256').update(`${text}_${targetLang}`).digest('hex');
 };
 
-exports.translateSentences = async (sentences, targetLang = 'Hindi') => {
+exports.translateSentences = async (sentences, targetLang = 'Hindi', userApiKey = null) => {
   const finalResults = new Array(sentences.length).fill(null);
   const toTranslate = [];
   const toTranslateIndices = [];
@@ -20,7 +16,7 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi') => {
     const text = sentences[i];
     const hash = hashText(text, targetLang);
     const cached = await Translation.findOne({ hash });
-    
+
     if (cached) {
       finalResults[i] = cached.translated;
     } else {
@@ -31,9 +27,15 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi') => {
 
   // 2. Batch translate missing via Gemini
   if (toTranslate.length > 0) {
+    const apiKey = (userApiKey && userApiKey.trim()) || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("No Gemini API key provided. Please provide your Gemini API key in settings or set GEMINI_API_KEY on the server.");
+    }
+    const genAI = new GoogleGenerativeAI(apiKey.trim());
+
     try {
       console.log(`Translating batch of ${toTranslate.length} sentences via Gemini...`);
-      
+
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
         generationConfig: {
@@ -68,7 +70,7 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi') => {
         const originalText = toTranslate[i];
         const translatedText = translatedSentences[i];
         const idx = toTranslateIndices[i];
-        
+
         finalResults[idx] = translatedText;
 
         // Async save to mongo
@@ -79,7 +81,7 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi') => {
           translated: translatedText,
           language: targetLang
         }).catch(err => {
-            if(err.code !== 11000) console.error("Cache save error:", err);
+          if (err.code !== 11000) console.error("Cache save error:", err);
         });
       }
 

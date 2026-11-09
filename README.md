@@ -8,6 +8,7 @@
 
 - **Document Ingestion**: Accepts `.pdf`, `.docx`, and `.txt` files or direct raw text input.
 - **Smart Sentence Segmentation**: Parses and divides text into clean, individual sentences preserving structure and punctuation.
+- **BYOK (Bring Your Own Key)**: Users can enter their own Google Gemini API key directly in the web UI. Keys are stored locally in the browser (`localStorage`) and sent securely per request.
 - **Parallel Bilingual Reading View**: Displays original and translated sentences aligned side-by-side or stacked in a distraction-free, modern reading UI.
 - **Chunked On-Demand Translation**: Translates text asynchronously in batches (20 sentences at a time) for smooth, non-blocking UI loading.
 - **Persistent Translation Caching**: Uses SHA-256 sentence hashing and MongoDB caching to avoid redundant API calls, minimize latency, and reduce Gemini API costs.
@@ -92,6 +93,7 @@ ParallelRead/
 │   │   ├── page.tsx          # Landing & file upload coordinator
 │   │   └── globals.css       # Global styling & Tailwind directives
 │   ├── components/
+│   │   ├── ApiKeyModal.tsx   # Modal for users to set/update their Gemini API key
 │   │   ├── FileUpload.tsx    # Drag-and-drop file upload & language selection
 │   │   └── ReaderView.tsx    # Parallel reading view with zoom & mode toggles
 │   └── lib/

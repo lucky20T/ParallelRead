@@ -51,17 +51,21 @@ exports.uploadAndProcess = async (req, res) => {
 
 exports.translateBatch = async (req, res) => {
   try {
-    const { sentences, targetLang } = req.body;
+    const { sentences, targetLang, apiKey: bodyApiKey } = req.body;
+    // Check header or request body for user's API key
+    const authHeader = req.headers.authorization;
+    const bearerKey = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const apiKey = bearerKey || req.headers['x-gemini-api-key'] || bodyApiKey;
 
     if (!sentences || !Array.isArray(sentences)) {
       return res.status(400).json({ error: 'Provide an array of sentences' });
     }
 
-    const translations = await translationService.translateSentences(sentences, targetLang);
+    const translations = await translationService.translateSentences(sentences, targetLang, apiKey);
     return res.status(200).json({ translations });
 
   } catch (error) {
     console.error('Translate error:', error);
-    res.status(500).json({ error: 'Failed to translate' });
+    res.status(500).json({ error: error.message || 'Failed to translate' });
   }
 };
