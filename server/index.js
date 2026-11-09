@@ -1,7 +1,16 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const dns = require('dns');
 require('dotenv').config();
+
+// Ensure resilient SRV resolution for MongoDB Atlas across all network environments
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // Ignore if custom DNS cannot be set
+}
+
 const readRoutes = require('./routes/readRoutes');
 
 const app = express();
