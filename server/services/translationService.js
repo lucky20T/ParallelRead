@@ -1,6 +1,12 @@
 const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Translation = require('../models/Translation');
+
+// Fast in-memory cache fallback when MongoDB is not connected
+const memoryCache = new Map();
+
+const isDbConnected = () => mongoose.connection.readyState === 1;
 
 const hashText = (text, targetLang) => {
   return crypto.createHash('sha256').update(`${text}_${targetLang}`).digest('hex');
@@ -11,14 +17,26 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi', userApiKey 
   const toTranslate = [];
   const toTranslateIndices = [];
 
-  // 1. Check cache for each sentence
+  // 1. Check cache for each sentence (MongoDB or In-Memory)
   for (let i = 0; i < sentences.length; i++) {
     const text = sentences[i];
     const hash = hashText(text, targetLang);
-    const cached = await Translation.findOne({ hash });
+    let cachedTranslation = null;
 
-    if (cached) {
-      finalResults[i] = cached.translated;
+    if (isDbConnected()) {
+      try {
+        const cached = await Translation.findOne({ hash });
+        if (cached) cachedTranslation = cached.translated;
+      } catch (dbErr) {
+        // Fallback to memory cache on DB query error
+        cachedTranslation = memoryCache.get(hash);
+      }
+    } else {
+      cachedTranslation = memoryCache.get(hash);
+    }
+
+    if (cachedTranslation) {
+      finalResults[i] = cachedTranslation;
     } else {
       toTranslate.push(text);
       toTranslateIndices.push(i);
@@ -29,7 +47,7 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi', userApiKey 
   if (toTranslate.length > 0) {
     const apiKey = (userApiKey && userApiKey.trim()) || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("No Gemini API key provided. Please provide your Gemini API key in settings or set GEMINI_API_KEY on the server.");
+      throw new Error("No Gemini API key provided. Please click 'Set Gemini Key' in the top right to enter your key.");
     }
     const genAI = new GoogleGenerativeAI(apiKey.trim());
 
@@ -73,16 +91,21 @@ exports.translateSentences = async (sentences, targetLang = 'Hindi', userApiKey 
 
         finalResults[idx] = translatedText;
 
-        // Async save to mongo
         const hash = hashText(originalText, targetLang);
-        Translation.create({
-          hash,
-          original: originalText,
-          translated: translatedText,
-          language: targetLang
-        }).catch(err => {
-          if (err.code !== 11000) console.error("Cache save error:", err);
-        });
+        // Always save to memory cache
+        memoryCache.set(hash, translatedText);
+
+        // Async save to mongo if connected
+        if (isDbConnected()) {
+          Translation.create({
+            hash,
+            original: originalText,
+            translated: translatedText,
+            language: targetLang
+          }).catch(err => {
+            if (err.code !== 11000) console.error("Cache save error:", err);
+          });
+        }
       }
 
     } catch (error) {
